@@ -12,7 +12,7 @@ app.use(bodyParser.json());
 // Serve static files dan HTML
 app.use(express.static(path.join(__dirname)));
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'employee-performance-tracker.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/qrcode', (req, res) => {
