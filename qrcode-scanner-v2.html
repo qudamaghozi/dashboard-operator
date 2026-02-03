@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Scanner Gudang</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0056B3 0%, #003D82 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .back-btn {
+            background: #FFC107;
+            color: #003D82;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-block;
+            white-space: nowrap;
+        }
+        
+        .back-btn:hover {
+            background: #FFD700;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        video, canvas {
+            display: block;
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            margin-bottom: 15px;
+        }
+        
+        #cameraVideo {
+            max-height: 400px;
+            object-fit: contain;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+        }
+        
+        .result th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .result td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .result tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #f9f9f9;
+            transition: all 0.3s;
+        }
+        
+        .file-input-wrapper:hover {
+            background: #f0f0f0;
+            border-color: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <h1>📦 QR Code Scanner</h1>
+                    <p>Sistem scan QR code gudang barang</p>
+                </div>
+                <a href="/" class="back-btn">← Kembali ke Utama</a>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('upload')">📸 Upload Foto</button>
+                <button class="tab-btn" onclick="switchTab('camera')">📷 Camera</button>
+            </div>
+            
+            <!-- Tab Upload -->
+            <div id="upload-tab" class="tab-content active">
+                <h2>📸 Upload Foto QR Code</h2>
+                <label class="file-input-wrapper" onclick="document.getElementById('fileInput').click()">
+                    <span style="text-align: center; color: #667eea; font-weight: 600;">
+                        Klik untuk pilih foto atau drag & drop<br/>
+                        <small style="color: #999; font-weight: normal;">Format: JPG, PNG</small>
+                    </span>
+                </label>
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" />
+            </div>
+            
+            <!-- Tab Camera -->
+            <div id="camera-tab" class="tab-content">
+                <h2>📷 Camera Scanner</h2>
+                <video id="cameraVideo" autoplay playsinline></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+                <button class="btn btn-secondary" style="width: 100%;" onclick="stopCamera()">⏹️ Hentikan</button>
+            </div>
+            
+            <!-- Error -->
+            <div class="error" id="errorMsg"></div>
+            
+            <!-- Result -->
+            <div class="result" id="resultBox">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">📦 Hasil Scan</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama Produk</th>
+                            <th>Berat (kg)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td id="resultNo">-</td>
+                            <td><strong id="resultName">-</strong></td>
+                            <td id="resultWeight">-</td>
+                            <td id="resultStatus">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="clearResult()">🔄 Scan Lagi</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Database Produk
+        const products = {
+            '1INDOMIE KARI100OKE': { no: 1, name: 'Indomie Kari', weight: 100, area: 'Area A', status: 'Oke' },
+            '2INDOMIE SOTO500REJECT': { no: 2, name: 'Indomie Soto', weight: 500, area: 'Area B', status: 'Reject' },
+            '3INDOMIE GORENG600OKE': { no: 3, name: 'Indomie Goreng', weight: 600, area: 'Area A', status: 'Oke' },
+            '4SARIMI400REJECT': { no: 4, name: 'Sarimi', weight: 400, area: 'Area C', status: 'Reject' },
+            '5SUPERMI200OKE': { no: 5, name: 'Supermi', weight: 200, area: 'Area B', status: 'Oke' }
+        };
+        
+        let cameraStream = null;
+        let scanActive = false;
+        
+        function switchTab(tab) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tab + '-tab').classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tab === 'camera') {
+                startCamera();
+            } else {
+                stopCamera();
+            }
+        }
+        
+        function startCamera() {
+            console.log('Starting camera...');
+            const video = document.getElementById('cameraVideo');
+            
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+            }).then(stream => {
+                console.log('Camera stream obtained');
+                cameraStream = stream;
+                video.srcObject = stream;
+                scanActive = true;
+                processCamera();
+            }).catch(err => {
+                console.error(err);
+                showError('Tidak dapat mengakses kamera: ' + err.message);
+            });
+        }
+        
+        function stopCamera() {
+            console.log('Stopping camera...');
+            scanActive = false;
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+        }
+        
+        function processCamera() {
+            if (!scanActive) return;
+            
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.getElementById('canvas');
+            
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, canvas.width, canvas.height);
+                
+                if (code) {
+                    const qrData = code.data.trim().toUpperCase();
+                    console.log('QR detected:', qrData);
+                    console.log('Available products:', Object.keys(products));
+                    
+                    if (products[qrData]) {
+                        console.log('Product found!');
+                        displayResult(qrData, products[qrData]);
+                        stopCamera();
+                        return;
+                    } else {
+                        console.log('Product not found for:', qrData);
+                    }
+                }
+            }
+            
+            requestAnimationFrame(processCamera);
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            console.log('File selected:', file.name);
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    console.log('Image loaded:', img.width, 'x', img.height);
+                    const canvas = document.getElementById('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    console.log('Image data obtained');
+                    const code = jsQR(imageData.data, canvas.width, canvas.height);
+                    
+                    if (code) {
+                        const qrData = code.data.trim().toUpperCase();
+                        console.log('QR detected from file:', qrData);
+                        console.log('Available products:', Object.keys(products));
+                        if (products[qrData]) {
+                            console.log('Product found!');
+                            displayResult(qrData, products[qrData]);
+                        } else {
+                            console.log('Product NOT found for code:', qrData);
+                            showError('Produk tidak ditemukan di database. QR: ' + qrData);
+                        }
+                    } else {
+                        console.log('No QR code detected in image');
+                        showError('QR code tidak ditemukan pada foto. Pastikan QR code terlihat jelas.');
+                    }
+                };
+                img.onerror = () => {
+                    console.error('Failed to load image');
+                    showError('Gagal membaca foto');
+                };
+                img.src = e.target.result;
+            };
+            reader.onerror = () => {
+                console.error('Failed to read file');
+                showError('Gagal membaca file');
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function displayResult(code, product) {
+            const errorEl = document.getElementById('errorMsg');
+            errorEl.classList.remove('show');
+            
+            document.getElementById('resultNo').textContent = product.no;
+            document.getElementById('resultName').textContent = product.name;
+            document.getElementById('resultWeight').textContent = product.weight + ' kg';
+            
+            const statusEl = document.getElementById('resultStatus');
+            if (product.status === 'Oke') {
+                statusEl.textContent = '✅ Oke';
+                statusEl.style.color = '#155724';
+                statusEl.style.fontWeight = '600';
+            } else {
+                statusEl.textContent = '❌ Reject';
+                statusEl.style.color = '#721c24';
+                statusEl.style.fontWeight = '600';
+            }
+            
+            document.getElementById('resultBox').classList.add('show');
+        }
+        
+        function clearResult() {
+            document.getElementById('resultBox').classList.remove('show');
+            document.getElementById('fileInput').value = '';
+        }
+        
+        function showError(msg) {
+            const errorEl = document.getElementById('errorMsg');
+            errorEl.textContent = msg;
+            errorEl.classList.add('show');
+            setTimeout(() => errorEl.classList.remove('show'), 5000);
+        }
+    </script>
+</body>
+</html>

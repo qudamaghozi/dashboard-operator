@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Tracking Pencapaian Operator</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            color: #222;
+            padding: 20px;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .header { text-align: center; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #0056B3 0%, #003D82 100%); padding: 16px; border-radius: 8px; margin: -20px -20px 18px -20px; }
+        .header-content { flex: 1; }
+        .header h1 { font-size: 1.4em; margin-bottom: 6px; color: white; }
+        .header p { color: rgba(255,255,255,0.95); font-size: 0.95em; margin: 0; }
+        
+        .nav-btn {
+            background: #FFC107;
+            color: #003D82;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .nav-btn:hover {
+            background: #FFD700;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        }
+
+        .stats-grid { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .stat-card { background: #f8f8f8; padding: 10px; border-radius: 6px; flex: 1; min-width: 140px; }
+        .stat-info h3 { font-size: 0.75em; color: #666; margin-bottom: 6px; text-transform: none; }
+        .stat-info p { font-size: 1.2em; font-weight: 700; color: #222; margin: 0; }
+
+        .main-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+        .card { background: transparent; padding: 0; }
+        .card h2 { font-size: 1.05em; margin-bottom: 8px; color: #222; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; border: 1px solid #ddd; }
+        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; font-size: 0.95em; }
+        th { background: #f0f0f0; color: #333; font-weight: 600; }
+
+        .rank-badge { display: inline-block; width: 28px; height: 28px; border-radius: 50%; background: #bdbdbd; color: #fff; text-align: center; line-height: 28px; font-weight: 600; }
+
+        .progress-bar { background: #eee; border-radius: 6px; height: 14px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #4caf50; color: #fff; font-size: 0.8em; text-align: center; }
+
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.85em; background: #eee; color: #333; }
+
+        .chart-container { height: 450px; position: relative; }
+
+        .notification-panel { padding: 0; }
+        .notification-item { background: #fff9e6; border-left: 4px solid #ffb74d; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+
+        .email-form { margin-top: 8px; padding: 0; }
+        .form-group label { display: block; margin-bottom: 4px; font-weight: 600; font-size: 0.9em; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95em; }
+
+        .btn { background: #1976d2; color: #fff; padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; }
+
+        .success-message, .error-message { padding: 10px; border-radius: 6px; margin-top: 10px; }
+
+        @media (max-width: 600px) { .stats-grid { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Data karyawan dari Excel
+        const employeeData = [
+            { no: 1, name: 'Abdul', target: 1000000, output: 960000 },
+            { no: 2, name: 'Budi', target: 1000000, output: 420000 },
+            { no: 3, name: 'Beni', target: 1000000, output: 1100000 },
+            { no: 4, name: 'Rian', target: 1000000, output: 950000 },
+            { no: 5, name: 'Romi', target: 1000000, output: 1000500 },
+            { no: 6, name: 'Farhan', target: 1000000, output: 550000 },
+            { no: 7, name: 'Krisna', target: 1000000, output: 953000 },
+            { no: 8, name: 'Fajar', target: 1000000, output: 1053000 },
+            { no: 9, name: 'Heri', target: 1000000, output: 876300 },
+            { no: 10, name: 'Nopri', target: 1000000, output: 300000 },
+            { no: 11, name: 'Dermawan', target: 1000000, output: 989000 }
+        ];
+
+        function App() {
+            const [employees, setEmployees] = useState([]);
+            const [notifications, setNotifications] = useState([]);
+            const [emailForm, setEmailForm] = useState({ email: '', message: '' });
+            const [sendStatus, setSendStatus] = useState(null);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                // Hitung persentase dan urutkan
+                const processedData = employeeData.map(emp => ({
+                    ...emp,
+                    percentage: ((emp.output / emp.target) * 100).toFixed(2),
+                    status: getStatus((emp.output / emp.target) * 100)
+                })).sort((a, b) => b.percentage - a.percentage);
+
+                setEmployees(processedData);
+
+                // Generate notifikasi untuk karyawan dengan pencapaian ≤ 50%
+                const lowPerformers = processedData.filter(emp => emp.percentage <= 50);
+                const notifs = lowPerformers.map(emp => ({
+                    id: emp.no,
+                    name: emp.name,
+                    percentage: emp.percentage,
+                    severity: emp.percentage <= 30 ? 'critical' : 'warning'
+                }));
+                setNotifications(notifs);
+
+                // Buat grafik
+                createChart(processedData);
+
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, []);
+
+            const getStatus = (percentage) => {
+                if (percentage >= 100) return 'excellent';
+                if (percentage >= 80) return 'good';
+                if (percentage >= 50) return 'warning';
+                return 'critical';
+            };
+
+            const getStatusLabel = (status) => {
+                const labels = {
+                    excellent: 'Sangat Baik',
+                    good: 'Baik',
+                    warning: 'Perlu Perhatian',
+                    critical: 'Kritis'
+                };
+                return labels[status] || status;
+            };
+
+            const getProgressClass = (percentage) => {
+                if (percentage >= 80) return 'high';
+                if (percentage >= 50) return 'medium';
+                return 'low';
+            };
+
+            const createChart = (data) => {
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                const ctx = chartRef.current.getContext('2d');
+                const labels = data.map(emp => emp.name);
+                const percentages = data.map(emp => parseFloat(emp.percentage));
+                const outputs = data.map(emp => emp.output);
+                
+                // Gen Z friendly gradient colors - Dark & Bold
+                const bg = data.map(emp => {
+                    const pct = parseFloat(emp.percentage);
+                    if (pct >= 100) return '#4CAF50'; // Dark Green
+                    if (pct >= 80) return '#2196F3'; // Dark Blue
+                    if (pct >= 50) return '#FF9800'; // Dark Orange
+                    return '#F44336'; // Dark Red
+                });
+                
+                const borderColors = data.map(emp => {
+                    const pct = parseFloat(emp.percentage);
+                    if (pct >= 100) return '#2E7D32';
+                    if (pct >= 80) return '#1565C0';
+                    if (pct >= 50) return '#E65100';
+                    return '#C62828';
+                });
+
+                chartInstance.current = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'Pencapaian (%)',
+                                data: percentages,
+                                backgroundColor: bg,
+                                borderColor: borderColors,
+                                borderWidth: 2,
+                                borderRadius: 12,
+                                barThickness: 28,
+                                barPercentage: 0.7,
+                                categoryPercentage: 0.6,
+                                borderSkipped: false
+                            },
+                            {
+                                type: 'line',
+                                label: 'Target (100%)',
+                                data: labels.map(() => 100),
+                                borderColor: '#9C27B0',
+                                borderWidth: 3,
+                                borderDash: [10, 5],
+                                pointRadius: 5,
+                                pointBackgroundColor: '#9C27B0',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                tension: 0.3,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                left: 10,
+                                right: 20,
+                                top: 20,
+                                bottom: 20
+                            }
+                        },
+                        plugins: {
+                            legend: { 
+                                display: true, 
+                                position: 'top',
+                                labels: {
+                                    color: '#333',
+                                    font: { size: 13, weight: 'bold' },
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0,0,0,0.8)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#9C27B0',
+                                borderWidth: 2,
+                                padding: 12,
+                                displayColors: true,
+                                boxPadding: 8,
+                                cornerRadius: 8,
+                                titleFont: { size: 13, weight: 'bold' },
+                                bodyFont: { size: 12 },
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.type === 'line') return context.dataset.label + ': 100%';
+                                        const idx = context.dataIndex;
+                                        const pct = context.parsed.x !== undefined ? context.parsed.x : context.parsed.y;
+                                        const val = outputs[idx];
+                                        return `Pencapaian: ${pct}% — ${new Intl.NumberFormat('id-ID').format(val)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 120,
+                                ticks: { 
+                                    callback: (v) => v + '%',
+                                    color: '#666',
+                                    font: { size: 11, weight: 'bold' }
+                                },
+                                grid: { 
+                                    color: 'rgba(0,0,0,0.05)',
+                                    drawBorder: true,
+                                    borderColor: '#ddd'
+                                }
+                            },
+                            y: {
+                                ticks: { 
+                                    color: '#003D82', 
+                                    font: { size: 12, weight: 'bold' },
+                                    padding: 8
+                                },
+                                grid: { display: false },
+                                border: { display: true, color: '#ddd' }
+                            }
+                        },
+                        animation: {
+                            duration: 1500,
+                            easing: 'easeInOutQuart'
+                        }
+                    }
+                });
+            };
+
+            const handleSendNotification = async (e) => {
+                e.preventDefault();
+                if (!emailForm.email) {
+                    alert('Mohon isi alamat email penerima.');
+                    return;
+                }
+
+                setSendStatus('sending');
+
+                // Jika file dibuka langsung (file://), gunakan localhost:3000 sebagai API base
+                const API_BASE = (location.protocol === 'file:') ? 'http://localhost:3000' : '';
+
+                try {
+                    const payload = {
+                        to: emailForm.email,
+                        employees: notifications.map(n => ({ name: n.name, percentage: n.percentage })),
+                        customMessage: emailForm.message
+                    };
+
+                    const resp = await fetch(`${API_BASE}/api/send-email`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await resp.json().catch(() => ({}));
+
+                    if (resp.ok && result.success) {
+                        setSendStatus('success');
+                    } else {
+                        console.error('Email send failed', result);
+                        setSendStatus('error');
+                    }
+                } catch (err) {
+                    console.error('Error sending email', err);
+                    setSendStatus('error');
+                }
+
+                setTimeout(() => setSendStatus(null), 5000);
+            };
+
+            const stats = {
+                total: employees.length,
+                excellent: employees.filter(e => e.status === 'excellent').length,
+                critical: employees.filter(e => e.percentage <= 50).length,
+                avgPercentage: (employees.reduce((sum, e) => sum + parseFloat(e.percentage), 0) / employees.length).toFixed(2)
+            };
+
+            return (
+                <div className="container">
+                    <div className="header animate-in">
+                        <div className="header-content">
+                            <h1>📊 Sistem Tracking Pencapaian Operator</h1>
+                            <p>Monitor dan analisis performa karyawan secara real-time</p>
+                        </div>
+                        <a href="/qrcode" className="nav-btn">📸 QR Scanner</a>
+                    </div>
+
+                    <div className="stats-grid">
+                        <div className="stat-card animate-in" style={{animationDelay: '0.1s'}}>
+                            <div className="stat-info">
+                                <h3>Total Karyawan</h3>
+                                <p>{stats.total}</p>
+                            </div>
+                            <div className="stat-icon blue">👥</div>
+                        </div>
+                        <div className="stat-card animate-in" style={{animationDelay: '0.2s'}}>
+                            <div className="stat-info">
+                                <h3>Performa Sangat Baik</h3>
+                                <p>{stats.excellent}</p>
+                            </div>
+                            <div className="stat-icon green">⭐</div>
+                        </div>
+                        <div className="stat-card animate-in" style={{animationDelay: '0.3s'}}>
+                            <div className="stat-info">
+                                <h3>Perlu Perhatian</h3>
+                                <p>{stats.critical}</p>
+                            </div>
+                            <div className="stat-icon red">⚠️</div>
+                        </div>
+                        <div className="stat-card animate-in" style={{animationDelay: '0.4s'}}>
+                            <div className="stat-info">
+                                <h3>Rata-rata Pencapaian</h3>
+                                <p>{stats.avgPercentage}%</p>
+                            </div>
+                            <div className="stat-icon orange">📈</div>
+                        </div>
+                    </div>
+
+                    <div className="main-grid">
+                        <div className="card animate-in" style={{animationDelay: '0.5s'}}>
+                            <h2>🏆 Ranking Pencapaian Operator</h2>
+                            <div className="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Nama</th>
+                                            <th>Target</th>
+                                            <th>Output</th>
+                                            <th>Pencapaian</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {employees.map((emp, index) => (
+                                            <tr key={emp.no}>
+                                                <td>
+                                                    <span className={`rank-badge rank-${index < 3 ? index + 1 : 'other'}`}>
+                                                        {index + 1}
+                                                    </span>
+                                                </td>
+                                                <td><strong>{emp.name}</strong></td>
+                                                <td>{new Intl.NumberFormat('id-ID').format(emp.target)}</td>
+                                                <td>{new Intl.NumberFormat('id-ID').format(emp.output)}</td>
+                                                <td>
+                                                    <div className="progress-bar">
+                                                        <div 
+                                                            className={`progress-fill ${getProgressClass(emp.percentage)}`}
+                                                            style={{width: `${Math.min(emp.percentage, 100)}%`}}
+                                                        >
+                                                            {emp.percentage}%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                {/* status column removed for simplified view */}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="card animate-in" style={{animationDelay: '0.6s'}}>
+                            <h2>📊 Grafik Performa</h2>
+                            <div className="chart-container">
+                                <canvas ref={chartRef}></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    {notifications.length > 0 && (
+                        <div className="notification-panel animate-in" style={{animationDelay: '0.7s'}}>
+                            <h2>🔔 Notifikasi Pencapaian Rendah (≤ 50%)</h2>
+                            <p style={{marginBottom: '20px', color: '#666'}}>
+                                Terdapat {notifications.length} karyawan dengan pencapaian di bawah 50% yang memerlukan perhatian khusus.
+                            </p>
+                            
+                            {notifications.map((notif) => (
+                                <div key={notif.id} className={`notification-item ${notif.severity}`}>
+                                    <div className="notification-icon">
+                                        {notif.severity === 'critical' ? '🚨' : '⚠️'}
+                                    </div>
+                                    <div className="notification-content">
+                                        <h4>{notif.name}</h4>
+                                        <p>Pencapaian: <strong>{notif.percentage}%</strong></p>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <div className="email-form">
+                                <h3 style={{marginBottom: '15px', color: '#333'}}>📧 Kirim Notifikasi Email</h3>
+                                <form onSubmit={handleSendNotification}>
+                                    <div className="form-group">
+                                        <label>Email Penerima:</label>
+                                        <input 
+                                            type="email" 
+                                            required
+                                            placeholder="manager@example.com"
+                                            value={emailForm.email}
+                                            onChange={(e) => setEmailForm({...emailForm, email: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Pesan (Opsional):</label>
+                                        <textarea 
+                                            rows="4"
+                                            placeholder="Tambahkan catatan atau instruksi khusus..."
+                                            value={emailForm.message}
+                                            onChange={(e) => setEmailForm({...emailForm, message: e.target.value})}
+                                        ></textarea>
+                                    </div>
+                                    <button type="submit" className="btn" disabled={sendStatus === 'sending'}>
+                                        {sendStatus === 'sending' ? '⏳ Mengirim...' : '📨 Kirim Notifikasi'}
+                                    </button>
+                                </form>
+
+                                {sendStatus === 'success' && (
+                                    <div className="success-message">
+                                        <span>✅</span>
+                                        <span>Notifikasi berhasil dikirim ke {emailForm.email}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
